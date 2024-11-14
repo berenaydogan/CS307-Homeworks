@@ -5,6 +5,9 @@
 #include <fcntl.h>
 #include <assert.h>
 #include <sys/wait.h>
+#include <time.h>      
+#include <math.h>   
+#include <limits.h>
 
 // Function that prints dashes according to the given parameter to match the output
 void printDashes(int times) {
@@ -77,6 +80,16 @@ void createWorker(int curDepth, int lr) {
     }
 }
 
+// Function for delaying the execution
+void delayExecution() {
+    for (volatile int i = 0; i < 100000; i++); 
+}
+
+// Generate a random number
+int generateRandomNumber() {
+    srand(time(NULL));
+    return rand() % 100; // Generate a random number between 0 and 99
+}
 
 int main(int argc, char *argv[]) {
 
@@ -145,6 +158,9 @@ int main(int argc, char *argv[]) {
         exit(1);
         }
 
+        // Generate a random number
+        generateRandomNumber()
+
         // Close the original file descriptors
         close(fd[0]); 
         close(fd[1]); 
@@ -173,7 +189,7 @@ int main(int argc, char *argv[]) {
     else if (left_rc == 0) {
 
         // If not the root node
-        if (curDepth != 0) {
+        if (curDepth == 0) {
             // Print current depth and num1 using stderr to the console
             printDashes(curDepth);
             fprintf(stderr, "> current depth: %d, lr: %d\n", curDepth, lr);
@@ -182,7 +198,7 @@ int main(int argc, char *argv[]) {
         }
 
         // If the child process isn't a leaf node, execute the program treePipe recursively as a left node on curDepth + 1
-        if (curDepth < maxDepth) {
+        if (curDepth) {
             
             // Print the current value of num1 to the pipe to be used by the new process to be executed
             printf("%s\n", num1Str);
@@ -194,6 +210,9 @@ int main(int argc, char *argv[]) {
 
         // Format the initial num2 value into a string for leaf nodes
         sprintf(num2Str, "%d", 1);
+
+        // Delay execution
+        delayExecution()
 
         // Print num1 and num2 values to pipe to be read by worker process
         printf("%s\n", num1Str);
@@ -235,8 +254,7 @@ int main(int argc, char *argv[]) {
             exit(1);
         }
 
-        // If right_rc == 0 (it is the child process)
-        else if (right_rc == 0) {
+        else if (right_rc) {
             // Transform the process to treePipe program, the right node of the forked parent, by executing the specified command using execvp()
             transformNode(curDepth, maxDepth, 1);
         }
