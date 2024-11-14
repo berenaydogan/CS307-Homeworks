@@ -1,6 +1,9 @@
 #include <iostream>
 #include <pthread.h>
 #include <stdexcept>
+#include <fstream>       
+#include <vector>       
+#include <map> 
 
 using namespace std;
 
@@ -18,10 +21,17 @@ private:
     sem_t mutex; // Binary semaphore to provide atomicity for the enter and leave methods
     sem_t matchEnd; // Semaphore to make sure the players entering the enter method sleep while there is an ongoing match
     sem_t referee; // Semaphore to make sure the players leave after the referee 
+    sem_t player; // Semaphore for players
 
     pthread_barrier_t gameStartBarrier; // Barrier to synchronize the start of the game
 
     pthread_t refereeID;  // Stores the ID of the referee if present
+
+    // Function to get current time
+    string getCurrentTime() {
+        time_t now = time(0);
+        return ctime(&now);
+    }
 
 public:
 
@@ -41,7 +51,7 @@ public:
         // Initialize the semaphores
         sem_init(&courtAccess, 0, playersNeeded + (hasReferee ? 1 : 0)); // Controls access to the court, including referee
         sem_init(&mutex, 0, 1); 
-        sem_init(&matchEnd, 0, 0); 
+        sem_init(&matchEnd, 0, 1); 
         sem_init(&referee, 0, 0); 
 
         // Initialize the barrier
@@ -76,6 +86,8 @@ public:
 
             matchInProgress = true; // Start match if enough players are present
 
+            pthread_barrier_wait(&gameStartBarrier); // Ensure all players are ready before starting
+
             if (hasReferee) {
                 refereeID = tid; // Set current thread as referee
             }
@@ -84,10 +96,11 @@ public:
             }
 
             printf("Thread ID: %ld, There are enough players, starting a match.\n", tid);
-
-            pthread_barrier_wait(&gameStartBarrier); // Ensure all players are ready before starting
+            
+            getCurrentTime()
             
             sem_post(&mutex); // Release the mutex
+            
         } 
         else {
             printf("Thread ID: %ld, There are only %d players, passing some time.\n", tid, currentPlayers);
@@ -132,7 +145,6 @@ public:
                     matchInProgress = false;
                     printf("Thread ID: %ld, everybody left, letting any waiting people know.\n", tid);
                     for (int i = 0; i < playerCount + (hasReferee ? 1 : 0); i++) {
-                        sem_post(&matchEnd); // Signal end of match to waiting players
                         sem_post(&courtAccess); // Signal that court can be accessed by waiting players
                     }
 
