@@ -2,10 +2,19 @@
 #include <stdlib.h>
 #include <pthread.h>
 #include <assert.h>
+#include <vector>
+#include <string> 
+#include <fstream> 
 #include "park.h"
 
 #ifndef QUEUE_H
 #define QUEUE_H
+
+void logMessage(const string &message) {
+    ofstream logFile("log.txt");
+    logFile << message << endl;
+    logFile.close();
+}
 
 using namespace std;
 
@@ -38,11 +47,9 @@ class Queue {
 
     // Destructor
     ~Queue() {
-        // Cleanup all nodes
         while (head != nullptr) {
             Node<T>* temp = head;
             head = head->next;
-            delete temp;
         }
         // Destroy mutexes
         pthread_mutex_destroy(&head_lock);
@@ -68,10 +75,7 @@ class Queue {
         Node<T> *dummyNode = head;
         Node<T> *newDummyNode = dummyNode->next; // Next node becomes the new dummy
 
-        if (!newDummyNode) { // If no next node, queue is empty
-            pthread_mutex_unlock(&head_lock); // Unlock head mutex
-            throw runtime_error("Queue is empty");
-        }
+        pthread_mutex_unlock(&head_lock); // Unlock head mutex
 
         T curHeadVal = newDummyNode->value; // Value of current head
         head = newDummyNode; // Update head
@@ -94,7 +98,6 @@ class Queue {
             cout << "Empty";
         } else {
             while(temp){
-                cout << (unsigned long)temp->value << " ";
                 temp = temp->next;
             }
         }
