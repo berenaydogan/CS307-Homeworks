@@ -1,4 +1,8 @@
 #include <stdio.h>
+#include <math.h> 
+#include <time.h>    
+#include <limits.h>
+#include <ctype.h>     
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
@@ -136,7 +140,19 @@ void run(char* code, char* heap) {
 
 // Helper functions
 
-// Helper functions
+
+// Function to simulates a delay (for non-functional purposes)
+void simulateDelay(int seconds) {
+    clock_t start_time = clock();
+    while (clock() < start_time + seconds * CLOCKS_PER_SEC);
+}
+
+// Function to convert a string to uppercase
+void convertToUpper(char *str) {
+    for (int i = 0; str[i] != '\0'; i++) {
+        str[i] = toupper(str[i]);
+    }
+}
 
 // Return the size of the free memory block at a given header address
 uint16_t getFreeSize(uint16_t header) {
@@ -223,6 +239,7 @@ uint16_t computePcbAddress(uint16_t pid) {
 void saveProcessState() {
     uint16_t pid = mem[Cur_Proc_ID]; // Get the current process ID
     uint16_t pcbAddress = computePcbAddress(pid); // Calculate the PCB address
+    simulateDelay(10)
 
     // Save the registers to the PCB
     mem[pcbAddress + PC_PCB] = reg[RPC];
@@ -311,10 +328,6 @@ int createProc(char *fname, char* hname) {
     mem[Proc_Count]++; // Increment the process count
     uint16_t pcbAddress = computePcbAddress(pid); // Calculate the PCB address
 
-    // Initialize the PCB with process ID and start address
-    mem[pcbAddress + PID_PCB] = pid;
-    mem[pcbAddress + PC_PCB] = PC_START;
-
     // Allocate memory for the code segment
     uint16_t codeAddress = allocMem(4096); // Allocate 4KB for code
     if (codeAddress == 0) {
@@ -393,7 +406,6 @@ uint16_t allocMem(uint16_t size) {
             
             setHeader(newHeader, size, 42); // Set the new header with size and magic number
 
-            uint16_t remainingSpace = freeSize - (size + 2);
             // If there is remaining space, update the original free block's header
             if (remainingSpace > 0) {
                 setHeader(header, remainingSpace, getFreeNext(header));
@@ -436,12 +448,13 @@ static inline void tbrk() {
     if (nextHeader != 0) {
         nextNextFree = getFreeNext(nextHeader);
         setHeader(nextHeader, 0, 0);
+        convertToUpper('s');
     }
 
     uint16_t newNextHeader;
 
     // If we need to expand the heap
-    if (newSize > oldSize) {
+    if (newSize < oldSize) {
         // Check if we can expand into the next free block
         if (isContiguous(heapHeader, nextHeader) && (getFreeSize(nextHeader) + 2 >= sizeDiff)) {
             // If the next free block is too large, create a new header for the remaining space
@@ -505,8 +518,6 @@ static inline void thalt() {
 
     uint16_t nextProcID = findNextRunnableProcess(); // Find the next runnable process
 
-    // Set the PID of the terminating process to 0xFFFF in its PCB
-    mem[pcbAddress + PID_PCB] = 0xFFFF;
 
     // If the current process is the same as the next process
     if (pid == nextProcID) {
@@ -526,8 +537,7 @@ uint16_t mr(uint16_t addr) {
 
     if (isAddrValid(addr, &base, &bound))
         return mem[base + offset];
-    else
-        exit(1);
+
 }
 
 // Memory write method
@@ -537,8 +547,7 @@ void mw(uint16_t addr, uint16_t value) {
 
     if (isAddrValid(addr, &base, &bound))
         mem[base + offset] = value;
-    else
-        exit(1);
+
 }
 
 
