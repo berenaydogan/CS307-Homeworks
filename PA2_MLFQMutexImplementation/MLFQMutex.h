@@ -9,6 +9,10 @@
 #include <atomic>
 #include <unordered_map>
 #include <cmath> 
+#include <fstream>     
+#include <map>            
+#include <list>             
+#include <ctime>  
 
 using namespace std;
 
@@ -46,11 +50,6 @@ class MLFQMutex {
         // Enqueue thread to its priority level
         void enqueueThread() {
             pthread_t currentThread = pthread_self();
-
-            // Check if the current thread is in the map, if not, add it with default level 0
-            if (threads.find(currentThread) == threads.end()) {
-                threads[currentThread] = 0;
-            }
 
             // Enqueue the thread ID provided by 'tid' to the queue corresponding to its level
             levels[threads[currentThread]]->enqueue(currentThread);
@@ -102,7 +101,6 @@ class MLFQMutex {
             }
              
             else {
-                enqueueThread(); // Queue the current thread since mutex is busy
 
                 garObj.setPark(); // Prepare the thread to park
                 
@@ -130,12 +128,6 @@ class MLFQMutex {
             }
 
             pthread_t highestPriorityThreadId = highestPriorityThread(); // Get the highest priority thread ready to run
-
-            if (highestPriorityThreadId == -1)
-                flag.clear(memory_order_release); // If no threads are waiting, release the mutex
-            else {
-                garObj.unpark(highestPriorityThreadId); // Unpark the next thread to acquire the mutex
-            }
             
             guard.clear(memory_order_release); // Release the guard
         }
@@ -143,7 +135,7 @@ class MLFQMutex {
         // Print the queue of each level
         void print() {
             printf("Waiting threads:");
-            for(int i = 0; i < noOfPriorityLevels; i++) {
+            for(int i = 0; i < noOfPriorityLevels + 1; i++) {
                 printf("\nLevel %d:",i);
                 fflush(stdout);
                 levels[i]->print();
